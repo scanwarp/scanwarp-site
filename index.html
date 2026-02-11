@@ -1,0 +1,1399 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ScanWarp — Your AI writes your code. ScanWarp keeps it running.</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Space+Mono:ital,wght@0,400;0,700;1,400&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,400&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --sand: #E8DCC8;
+      --sand-light: #F2EBE0;
+      --sand-dark: #D4C4A8;
+      --brown: #6d5537;
+      --brown-dark: #5C4A32;
+      --brown-darker: #3D2E1C;
+      --orange: #a44200;
+      --orange-glow: #E8863E;
+      --red: #ba4135;
+      --green: #2c701d;
+      --green-light: #6DBF5A;
+      --blue: #4A7FB5;
+      --cream: #FAF6F0;
+      --charcoal: #2A2318;
+      /* Accessible variants for dark backgrounds */
+      --brown-on-dark: #9f8769;
+      --red-on-dark: #de6559;
+      --blue-on-dark: #5a8fc5;
+      --orange-on-dark: #E8863E;
+      --pixel-font: 'Press Start 2P', monospace;
+      --mono-font: 'Space Mono', monospace;
+      --body-font: 'DM Sans', sans-serif;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      background: var(--sand-light);
+      color: var(--brown-darker);
+      font-family: var(--body-font);
+      line-height: 1.7;
+      overflow-x: hidden;
+    }
+
+    /* Skip link for keyboard navigation */
+    .skip-link {
+      position: absolute;
+      top: -100px;
+      left: 0;
+      background: var(--charcoal);
+      color: var(--sand);
+      padding: 0.75rem 1.5rem;
+      font-family: var(--mono-font);
+      font-size: 0.85rem;
+      z-index: 200;
+      text-decoration: none;
+      border: 3px solid var(--orange);
+    }
+
+    .skip-link:focus {
+      top: 0;
+    }
+
+    /* Focus styles for keyboard navigation */
+    *:focus-visible {
+      outline: 3px solid var(--orange);
+      outline-offset: 3px;
+    }
+
+    a:focus-visible, button:focus-visible {
+      outline: 3px solid var(--orange);
+      outline-offset: 3px;
+    }
+
+    /* Respect reduced motion preference */
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+      }
+      .status-scroll {
+        animation: none;
+      }
+      .fade-up {
+        opacity: 1;
+        transform: none;
+      }
+    }
+
+    /* Scanline overlay */
+    body::after {
+      content: '';
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 9999;
+      background: repeating-linear-gradient(
+        0deg,
+        transparent,
+        transparent 2px,
+        rgba(0, 0, 0, 0.015) 2px,
+        rgba(0, 0, 0, 0.015) 4px
+      );
+    }
+
+    /* ===== NAV ===== */
+    nav {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 100;
+      padding: 1rem 2rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: var(--sand-light);
+      border-bottom: 3px solid var(--brown-dark);
+      transition: box-shadow 0.3s ease;
+    }
+
+    nav.scrolled {
+      box-shadow: 0 4px 20px rgba(92, 74, 50, 0.15);
+    }
+
+    .nav-logo {
+      font-family: var(--pixel-font);
+      font-size: 0.85rem;
+      color: var(--brown-darker);
+      letter-spacing: 2px;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      text-decoration: none;
+      text-shadow: 1px 1px 0 var(--sand-dark);
+    }
+
+    .nav-logo .logo-icon {
+      width: 28px;
+      height: 28px;
+      background: var(--orange);
+      border: 2px solid var(--brown-dark);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+    }
+
+    .nav-logo .logo-icon::after {
+      content: '';
+      width: 8px;
+      height: 8px;
+      background: var(--cream);
+      box-shadow: 10px 0 0 var(--cream), 0 10px 0 var(--cream);
+    }
+
+    .nav-links {
+      display: flex;
+      gap: 2rem;
+      align-items: center;
+    }
+
+    .nav-links a {
+      font-family: var(--mono-font);
+      font-size: 0.8rem;
+      color: var(--brown);
+      text-decoration: none;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      transition: color 0.2s;
+    }
+
+    .nav-links a:hover {
+      color: var(--orange);
+    }
+
+    .nav-cta {
+      font-family: var(--pixel-font) !important;
+      font-size: 0.6rem !important;
+      background: var(--charcoal) !important;
+      color: var(--sand) !important;
+      padding: 0.6rem 1.2rem;
+      border: 2px solid var(--brown-dark);
+      cursor: pointer;
+      transition: all 0.15s;
+      text-decoration: none;
+    }
+
+    .nav-cta:hover {
+      background: var(--orange) !important;
+      color: var(--cream) !important;
+      transform: translate(-2px, -2px);
+      box-shadow: 2px 2px 0 var(--brown-dark);
+    }
+
+    /* ===== HERO ===== */
+    .hero {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      padding: 8rem 2rem 4rem;
+      max-width: 900px;
+      margin: 0 auto;
+      position: relative;
+    }
+
+    .hero-badge {
+      font-family: var(--mono-font);
+      font-size: 0.75rem;
+      color: var(--green);
+      text-transform: uppercase;
+      letter-spacing: 3px;
+      margin-bottom: 1.5rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .hero-badge .dot {
+      width: 8px;
+      height: 8px;
+      background: var(--green);
+      display: inline-block;
+      animation: blink 2s infinite;
+    }
+
+    @keyframes blink {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.3; }
+    }
+
+    .hero h1 {
+      font-family: var(--pixel-font);
+      font-size: clamp(1.4rem, 4vw, 2.4rem);
+      line-height: 1.8;
+      color: var(--brown-darker);
+      margin-bottom: 1.5rem;
+      text-shadow:
+        2px 2px 0 var(--sand),
+        -1px -1px 0 rgba(255,255,255,0.6),
+        0 0 20px rgba(61, 46, 28, 0.1);
+    }
+
+    .hero h1 .highlight {
+      color: var(--orange);
+      text-shadow:
+        2px 2px 0 rgba(92, 74, 50, 0.4),
+        -1px -1px 0 rgba(255,255,255,0.4),
+        0 0 30px rgba(164, 66, 0, 0.15);
+    }
+
+    .hero-sub {
+      font-family: var(--body-font);
+      font-size: 1.2rem;
+      color: var(--brown);
+      max-width: 600px;
+      margin-bottom: 2.5rem;
+      line-height: 1.8;
+    }
+
+    /* Terminal block */
+    .terminal {
+      background: var(--charcoal);
+      border: 3px solid var(--brown-dark);
+      padding: 1.5rem;
+      font-family: var(--mono-font);
+      font-size: 0.85rem;
+      line-height: 2;
+      color: var(--sand);
+      max-width: 580px;
+      position: relative;
+      margin-bottom: 2rem;
+    }
+
+    .terminal::before {
+      content: 'TERMINAL';
+      position: absolute;
+      top: -0.7rem;
+      left: 1rem;
+      font-family: var(--pixel-font);
+      font-size: 0.5rem;
+      background: var(--charcoal);
+      color: var(--brown);
+      padding: 0 0.5rem;
+      letter-spacing: 2px;
+    }
+
+    .terminal .prompt {
+      color: var(--orange-glow);
+    }
+
+    .terminal .success {
+      color: var(--green-light);
+    }
+
+    .terminal .info {
+      color: var(--sand-dark);
+    }
+
+    .terminal .dim {
+      color: var(--brown-on-dark);
+    }
+
+    .terminal .cursor-blink {
+      display: inline-block;
+      width: 8px;
+      height: 14px;
+      background: var(--orange-glow);
+      animation: cursor-blink 1s infinite;
+      vertical-align: middle;
+      margin-left: 2px;
+    }
+
+    @keyframes cursor-blink {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0; }
+    }
+
+    .hero-ctas {
+      display: flex;
+      gap: 1rem;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .btn-primary {
+      font-family: var(--pixel-font);
+      font-size: 0.65rem;
+      background: var(--orange);
+      color: var(--cream);
+      padding: 1rem 2rem;
+      border: 3px solid var(--brown-dark);
+      cursor: pointer;
+      text-decoration: none;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      transition: all 0.15s;
+      display: inline-block;
+    }
+
+    .btn-primary:hover {
+      transform: translate(-3px, -3px);
+      box-shadow: 3px 3px 0 var(--brown-dark);
+      background: var(--orange-glow);
+    }
+
+    .btn-secondary {
+      font-family: var(--pixel-font);
+      font-size: 0.65rem;
+      background: transparent;
+      color: var(--brown-dark);
+      padding: 1rem 2rem;
+      border: 3px solid var(--brown-dark);
+      cursor: pointer;
+      text-decoration: none;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      transition: all 0.15s;
+      display: inline-block;
+    }
+
+    .btn-secondary:hover {
+      transform: translate(-3px, -3px);
+      box-shadow: 3px 3px 0 var(--brown-dark);
+      background: var(--sand-dark);
+    }
+
+    /* ===== SCROLL INDICATOR ===== */
+    .scroll-hint {
+      position: absolute;
+      bottom: 2rem;
+      left: 50%;
+      transform: translateX(-50%);
+      font-family: var(--pixel-font);
+      font-size: 0.5rem;
+      color: var(--brown);
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      animation: bob 2s ease-in-out infinite;
+    }
+
+    @keyframes bob {
+      0%, 100% { transform: translateX(-50%) translateY(0); }
+      50% { transform: translateX(-50%) translateY(6px); }
+    }
+
+    /* ===== STORY SECTION ===== */
+    .section {
+      padding: 6rem 2rem;
+      max-width: 900px;
+      margin: 0 auto;
+    }
+
+    .section-divider {
+      border: none;
+      border-top: 3px dashed var(--sand-dark);
+      max-width: 900px;
+      margin: 0 auto;
+    }
+
+    .section-label {
+      font-family: var(--pixel-font);
+      font-size: 0.55rem;
+      color: var(--orange);
+      text-transform: uppercase;
+      letter-spacing: 4px;
+      margin-bottom: 1.5rem;
+    }
+
+    .section h2 {
+      font-family: var(--pixel-font);
+      font-size: clamp(0.9rem, 2.5vw, 1.3rem);
+      line-height: 2;
+      color: var(--brown-darker);
+      margin-bottom: 1.5rem;
+      text-shadow:
+        1px 1px 0 var(--sand),
+        -1px -1px 0 rgba(255,255,255,0.5);
+    }
+
+    .section p {
+      font-size: 1.1rem;
+      color: var(--brown);
+      margin-bottom: 1.5rem;
+      max-width: 650px;
+    }
+
+    /* ===== THE PROBLEM ===== */
+    .problem-scenario {
+      background: var(--cream);
+      border: 3px solid var(--sand-dark);
+      padding: 2rem;
+      margin: 2rem 0;
+      position: relative;
+    }
+
+    .problem-scenario::before {
+      content: 'WHAT HAPPENED';
+      position: absolute;
+      top: -0.7rem;
+      left: 1rem;
+      font-family: var(--pixel-font);
+      font-size: 0.45rem;
+      background: var(--cream);
+      color: var(--red);
+      padding: 0 0.5rem;
+      letter-spacing: 2px;
+    }
+
+    .scenario-line {
+      font-family: var(--mono-font);
+      font-size: 0.85rem;
+      color: var(--brown-dark);
+      padding: 0.4rem 0;
+      display: flex;
+      align-items: flex-start;
+      gap: 1rem;
+    }
+
+    .scenario-time {
+      font-family: var(--pixel-font);
+      font-size: 0.5rem;
+      color: var(--brown);
+      min-width: 70px;
+      padding-top: 3px;
+    }
+
+    .scenario-line.error {
+      color: var(--red);
+    }
+
+    .scenario-line.error .scenario-time {
+      color: var(--red);
+    }
+
+    /* ===== INCIDENT TIMELINE ===== */
+    .timeline {
+      margin: 3rem 0;
+      position: relative;
+      padding-left: 2rem;
+    }
+
+    .timeline::before {
+      content: '';
+      position: absolute;
+      left: 6px;
+      top: 0;
+      bottom: 0;
+      width: 3px;
+      background: var(--sand-dark);
+    }
+
+    .timeline-event {
+      position: relative;
+      margin-bottom: 2rem;
+      padding-left: 2rem;
+    }
+
+    .timeline-event::before {
+      content: '';
+      position: absolute;
+      left: -2rem;
+      top: 0.5rem;
+      width: 15px;
+      height: 15px;
+      border: 3px solid var(--brown-dark);
+      background: var(--sand-light);
+    }
+
+    .timeline-event.active::before {
+      background: var(--orange);
+    }
+
+    .timeline-event.success::before {
+      background: var(--green);
+    }
+
+    .timeline-event .event-time {
+      font-family: var(--pixel-font);
+      font-size: 0.5rem;
+      color: var(--brown);
+      letter-spacing: 1px;
+      margin-bottom: 0.4rem;
+    }
+
+    .timeline-event .event-title {
+      font-family: var(--mono-font);
+      font-size: 0.9rem;
+      font-weight: 700;
+      color: var(--brown-darker);
+      margin-bottom: 0.3rem;
+    }
+
+    .timeline-event .event-desc {
+      font-size: 0.95rem;
+      color: var(--brown);
+    }
+
+    /* ===== NOTIFICATION CARD ===== */
+    .notif-card {
+      background: var(--charcoal);
+      border: 3px solid var(--brown-dark);
+      padding: 1.5rem;
+      margin: 2rem 0;
+      max-width: 500px;
+      position: relative;
+    }
+
+    .notif-card::before {
+      content: 'DISCORD ALERT';
+      position: absolute;
+      top: -0.7rem;
+      left: 1rem;
+      font-family: var(--pixel-font);
+      font-size: 0.45rem;
+      background: var(--charcoal);
+      color: var(--blue-on-dark);
+      padding: 0 0.5rem;
+      letter-spacing: 2px;
+    }
+
+    .notif-header {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      margin-bottom: 1rem;
+    }
+
+    .notif-avatar {
+      width: 28px;
+      height: 28px;
+      background: var(--orange);
+      border: 2px solid var(--brown);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: var(--pixel-font);
+      font-size: 0.4rem;
+      color: var(--cream);
+    }
+
+    .notif-name {
+      font-family: var(--mono-font);
+      font-size: 0.8rem;
+      color: var(--orange-glow);
+      font-weight: 700;
+    }
+
+    .notif-time {
+      font-family: var(--mono-font);
+      font-size: 0.7rem;
+      color: var(--brown-on-dark);
+      margin-left: auto;
+    }
+
+    .notif-body {
+      font-family: var(--mono-font);
+      font-size: 0.8rem;
+      color: var(--sand);
+      line-height: 1.9;
+    }
+
+    .notif-body .red { color: var(--red-on-dark); }
+    .notif-body .green { color: var(--green-light); }
+    .notif-body .orange { color: var(--orange-on-dark); }
+
+    /* ===== FEATURES GRID ===== */
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 1.5rem;
+      margin: 2.5rem 0;
+    }
+
+    .feature-card {
+      background: var(--cream);
+      border: 3px solid var(--sand-dark);
+      padding: 1.5rem;
+      transition: all 0.15s;
+    }
+
+    .feature-card:hover {
+      transform: translate(-2px, -2px);
+      box-shadow: 2px 2px 0 var(--brown-dark);
+      border-color: var(--brown-dark);
+    }
+
+    .feature-icon {
+      font-family: var(--pixel-font);
+      font-size: 1.2rem;
+      margin-bottom: 1rem;
+      display: block;
+    }
+
+    .feature-card h3 {
+      font-family: var(--pixel-font);
+      font-size: 0.55rem;
+      color: var(--brown-darker);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 0.75rem;
+      line-height: 1.8;
+    }
+
+    .feature-card p {
+      font-size: 0.95rem;
+      color: var(--brown);
+      line-height: 1.7;
+      margin-bottom: 0;
+    }
+
+    /* ===== PROVIDERS ===== */
+    .providers-bar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1rem;
+      margin: 2rem 0;
+    }
+
+    .provider-chip {
+      font-family: var(--mono-font);
+      font-size: 0.8rem;
+      color: var(--brown-dark);
+      background: var(--cream);
+      border: 2px solid var(--sand-dark);
+      padding: 0.5rem 1rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .provider-chip .status {
+      width: 6px;
+      height: 6px;
+      background: var(--green);
+    }
+
+    /* ===== NOT SECTION ===== */
+    .honest-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 1rem;
+      margin: 2rem 0;
+    }
+
+    .honest-card {
+      border: 2px dashed var(--sand-dark);
+      padding: 1.5rem;
+    }
+
+    .honest-card .not-label {
+      font-family: var(--pixel-font);
+      font-size: 0.5rem;
+      color: var(--red);
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      margin-bottom: 0.5rem;
+    }
+
+    .honest-card .use-label {
+      font-family: var(--mono-font);
+      font-size: 0.75rem;
+      color: var(--brown);
+      margin-bottom: 0.5rem;
+    }
+
+    .honest-card p {
+      font-size: 0.9rem;
+      color: var(--brown);
+      margin-bottom: 0;
+    }
+
+    /* ===== PRICING ===== */
+    .pricing-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 1.5rem;
+      margin: 2.5rem 0;
+    }
+
+    .price-card {
+      background: var(--cream);
+      border: 3px solid var(--sand-dark);
+      padding: 2rem;
+      text-align: center;
+    }
+
+    .price-card.featured {
+      border-color: var(--orange);
+      position: relative;
+    }
+
+    .price-card.featured::after {
+      content: 'POPULAR';
+      position: absolute;
+      top: -0.7rem;
+      left: 50%;
+      transform: translateX(-50%);
+      font-family: var(--pixel-font);
+      font-size: 0.45rem;
+      background: var(--orange);
+      color: var(--cream);
+      padding: 0.2rem 0.8rem;
+      letter-spacing: 2px;
+    }
+
+    .price-name {
+      font-family: var(--pixel-font);
+      font-size: 0.6rem;
+      color: var(--brown-darker);
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      margin-bottom: 1rem;
+    }
+
+    .price-amount {
+      font-family: var(--pixel-font);
+      font-size: 1.5rem;
+      color: var(--brown-darker);
+      margin-bottom: 0.5rem;
+    }
+
+    .price-period {
+      font-family: var(--mono-font);
+      font-size: 0.75rem;
+      color: var(--brown);
+      margin-bottom: 1.5rem;
+    }
+
+    .price-features {
+      list-style: none;
+      text-align: left;
+      margin-bottom: 1.5rem;
+    }
+
+    .price-features li {
+      font-family: var(--mono-font);
+      font-size: 0.8rem;
+      color: var(--brown-dark);
+      padding: 0.4rem 0;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .price-features li::before {
+      content: '■';
+      color: var(--green);
+      font-size: 0.5rem;
+    }
+
+    /* ===== OPEN SOURCE ===== */
+    .oss-block {
+      background: var(--charcoal);
+      border: 3px solid var(--brown-dark);
+      padding: 3rem 2rem;
+      margin: 2rem 0;
+      text-align: center;
+    }
+
+    .oss-block h3 {
+      font-family: var(--pixel-font);
+      font-size: 0.8rem;
+      color: var(--sand);
+      letter-spacing: 2px;
+      margin-bottom: 1rem;
+      line-height: 2;
+    }
+
+    .oss-block p {
+      font-family: var(--body-font);
+      font-size: 1rem;
+      color: var(--brown-on-dark);
+      max-width: 500px;
+      margin: 0 auto 1.5rem;
+      line-height: 1.7;
+    }
+
+    .oss-block .btn-primary {
+      background: var(--orange);
+    }
+
+    /* ===== CTA SECTION ===== */
+    .cta-section {
+      text-align: center;
+      padding: 6rem 2rem 4rem;
+      max-width: 700px;
+      margin: 0 auto;
+    }
+
+    .cta-section h2 {
+      font-family: var(--pixel-font);
+      font-size: clamp(0.9rem, 2.5vw, 1.3rem);
+      color: var(--brown-darker);
+      line-height: 2.2;
+      margin-bottom: 1.5rem;
+      text-shadow:
+        1px 1px 0 var(--sand),
+        -1px -1px 0 rgba(255,255,255,0.5);
+    }
+
+    .cta-section p {
+      font-size: 1.1rem;
+      color: var(--brown);
+      margin-bottom: 2rem;
+    }
+
+    .cta-terminal {
+      background: var(--charcoal);
+      border: 3px solid var(--brown-dark);
+      padding: 1.5rem 2rem;
+      font-family: var(--mono-font);
+      font-size: 1rem;
+      color: var(--orange-glow);
+      display: inline-block;
+      margin-bottom: 2rem;
+      cursor: pointer;
+      transition: all 0.15s;
+      position: relative;
+    }
+
+    .cta-terminal:hover {
+      transform: translate(-2px, -2px);
+      box-shadow: 2px 2px 0 var(--brown-dark);
+    }
+
+    .cta-terminal .copy-hint {
+      font-family: var(--pixel-font);
+      font-size: 0.4rem;
+      color: var(--brown);
+      position: absolute;
+      top: -0.6rem;
+      right: 0.5rem;
+      background: var(--charcoal);
+      padding: 0 0.4rem;
+      letter-spacing: 1px;
+    }
+
+    /* ===== FOOTER ===== */
+    footer {
+      border-top: 3px solid var(--brown-dark);
+      padding: 3rem 2rem;
+      max-width: 900px;
+      margin: 0 auto;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      flex-wrap: wrap;
+      gap: 2rem;
+    }
+
+    .footer-brand {
+      font-family: var(--pixel-font);
+      font-size: 0.65rem;
+      color: var(--brown-darker);
+      letter-spacing: 2px;
+      margin-bottom: 0.5rem;
+    }
+
+    .footer-copy {
+      font-family: var(--mono-font);
+      font-size: 0.7rem;
+      color: var(--brown);
+    }
+
+    .footer-links {
+      display: flex;
+      gap: 2rem;
+    }
+
+    .footer-col h4 {
+      font-family: var(--pixel-font);
+      font-size: 0.45rem;
+      color: var(--brown-darker);
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      margin-bottom: 0.75rem;
+    }
+
+    .footer-col a {
+      display: block;
+      font-family: var(--mono-font);
+      font-size: 0.75rem;
+      color: var(--brown);
+      text-decoration: none;
+      padding: 0.25rem 0;
+      transition: color 0.2s;
+    }
+
+    .footer-col a:hover {
+      color: var(--orange);
+    }
+
+    /* ===== STATUS BAR ===== */
+    .status-bar {
+      background: var(--sand-dark);
+      border-top: 2px solid var(--brown);
+      border-bottom: 2px solid var(--brown);
+      padding: 0.6rem 0;
+      overflow: hidden;
+      white-space: nowrap;
+    }
+
+    .status-scroll {
+      display: inline-flex;
+      gap: 3rem;
+      animation: scroll-left 30s linear infinite;
+    }
+
+    .status-item {
+      font-family: var(--mono-font);
+      font-size: 0.7rem;
+      color: var(--brown-dark);
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      flex-shrink: 0;
+    }
+
+    .status-item .dot-green {
+      width: 6px;
+      height: 6px;
+      background: var(--green);
+    }
+
+    .status-item .dot-orange {
+      width: 6px;
+      height: 6px;
+      background: var(--orange);
+    }
+
+    @keyframes scroll-left {
+      0% { transform: translateX(0); }
+      100% { transform: translateX(-50%); }
+    }
+
+    /* ===== RESPONSIVE ===== */
+    @media (max-width: 768px) {
+      nav {
+        padding: 0.75rem 1rem;
+      }
+      .nav-links {
+        gap: 1rem;
+      }
+      .nav-links a:not(.nav-cta) {
+        display: none;
+      }
+      .hero {
+        padding: 7rem 1.5rem 3rem;
+      }
+      .section {
+        padding: 4rem 1.5rem;
+      }
+      .features-grid, .pricing-grid {
+        grid-template-columns: 1fr;
+      }
+      .honest-grid {
+        grid-template-columns: 1fr;
+      }
+      footer {
+        flex-direction: column;
+      }
+      .footer-links {
+        flex-direction: column;
+        gap: 1.5rem;
+      }
+    }
+
+    /* ===== FADE IN ANIMATIONS ===== */
+    .fade-up {
+      opacity: 0;
+      transform: translateY(20px);
+      transition: opacity 0.6s ease, transform 0.6s ease;
+    }
+
+    .fade-up.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  </style>
+</head>
+<body>
+
+  <a href="#main-content" class="skip-link">Skip to main content</a>
+
+  <!-- NAV -->
+  <nav aria-label="Main navigation">
+    <a href="#" class="nav-logo">
+      <span class="logo-icon"></span>
+      SCANWARP
+    </a>
+    <div class="nav-links">
+      <a href="#features">Features</a>
+      <a href="#pricing">Pricing</a>
+      <a href="https://github.com/scanwarp/scanwarp">GitHub</a>
+      <a href="#get-started" class="nav-cta">Get Started</a>
+    </div>
+  </nav>
+
+  <!-- HERO -->
+  <main id="main-content">
+  <section class="hero" aria-label="Introduction">
+    <div class="hero-badge">
+      <span class="dot"></span>
+      Open Source &middot; MIT Licensed
+    </div>
+    <h1>
+      Your AI writes<br>
+      your code.<br>
+      <span class="highlight">ScanWarp keeps<br>it running.</span>
+    </h1>
+    <p class="hero-sub">
+      One command. ScanWarp scans your app, aggregates alerts from your entire stack, and when something breaks, AI diagnoses the problem in plain English. Your coding tool already knows the fix.
+    </p>
+    <div class="terminal">
+      <div><span class="prompt">$</span> npx scanwarp init</div>
+      <div class="info">? What's your app URL? https://my-app.vercel.app</div>
+      <div><span class="success">✓</span> Scanning... found 4 pages, 2 API routes</div>
+      <div><span class="success">✓</span> Vercel log drain connected</div>
+      <div><span class="success">✓</span> Stripe webhook listener active</div>
+      <div><span class="success">✓</span> Supabase health monitoring on</div>
+      <div><span class="success">✓</span> MCP configured for Claude Code</div>
+      <div><span class="success">✓</span> ScanWarp is watching.<span class="cursor-blink"></span></div>
+    </div>
+    <div class="hero-ctas">
+      <a href="#get-started" class="btn-primary">Start Scanning</a>
+      <a href="https://github.com/scanwarp/scanwarp" class="btn-secondary">View Source</a>
+    </div>
+    <div class="scroll-hint">▼ Scroll</div>
+  </section>
+
+  <!-- STATUS BAR -->
+  <div class="status-bar" aria-hidden="true">
+    <div class="status-scroll">
+      <span class="status-item"><span class="dot-green"></span> shoply.vercel.app · 142ms · healthy</span>
+      <span class="status-item"><span class="dot-green"></span> myapp.railway.app · 89ms · healthy</span>
+      <span class="status-item"><span class="dot-orange"></span> api.coolstartup.dev · 520ms · slow</span>
+      <span class="status-item"><span class="dot-green"></span> dashboard.saas.io · 201ms · healthy</span>
+      <span class="status-item"><span class="dot-green"></span> checkout.store.app · 167ms · healthy</span>
+      <span class="status-item"><span class="dot-green"></span> landing.startup.com · 95ms · healthy</span>
+      <span class="status-item"><span class="dot-green"></span> app.freelancer.dev · 178ms · healthy</span>
+      <span class="status-item"><span class="dot-orange"></span> blog.creator.io · 445ms · slow</span>
+      <!-- Duplicate for seamless scroll -->
+      <span class="status-item"><span class="dot-green"></span> shoply.vercel.app · 142ms · healthy</span>
+      <span class="status-item"><span class="dot-green"></span> myapp.railway.app · 89ms · healthy</span>
+      <span class="status-item"><span class="dot-orange"></span> api.coolstartup.dev · 520ms · slow</span>
+      <span class="status-item"><span class="dot-green"></span> dashboard.saas.io · 201ms · healthy</span>
+      <span class="status-item"><span class="dot-green"></span> checkout.store.app · 167ms · healthy</span>
+      <span class="status-item"><span class="dot-green"></span> landing.startup.com · 95ms · healthy</span>
+      <span class="status-item"><span class="dot-green"></span> app.freelancer.dev · 178ms · healthy</span>
+      <span class="status-item"><span class="dot-orange"></span> blog.creator.io · 445ms · slow</span>
+    </div>
+  </div>
+
+  <!-- THE PROBLEM -->
+  <hr class="section-divider">
+  <section class="section fade-up">
+    <div class="section-label">The Problem</div>
+    <h2>You built your app by prompting. You find out it's broken from a DM.</h2>
+    <p>
+      You described what you wanted. Cursor built it. You deployed to Vercel. Users showed up. Revenue started flowing. Then this happened:
+    </p>
+    <div class="problem-scenario">
+      <div class="scenario-line"><span class="scenario-time">MON 2:00PM</span> Deployed discount code feature</div>
+      <div class="scenario-line"><span class="scenario-time">MON 2:14PM</span> User enters invalid code</div>
+      <div class="scenario-line error"><span class="scenario-time">MON 2:14PM</span> Checkout page crashes — unhandled exception</div>
+      <div class="scenario-line error"><span class="scenario-time">MON–FRI</span> 47 users hit the same bug. 0 complete checkout.</div>
+      <div class="scenario-line"><span class="scenario-time">FRI 9:22AM</span> You find out from a Twitter DM: "your site is broken"</div>
+    </div>
+    <p>
+      You looked at Datadog. You saw dashboards, P99 latencies, log aggregation, APM configuration. You closed the tab. You built your entire app in English. Why can't monitoring work the same way?
+    </p>
+  </section>
+
+  <!-- THE FIX -->
+  <hr class="section-divider">
+  <section class="section fade-up">
+    <div class="section-label">With ScanWarp</div>
+    <h2>Same scenario. Different outcome.</h2>
+    <div class="timeline">
+      <div class="timeline-event active">
+        <div class="event-time">MON 2:14 PM</div>
+        <div class="event-title">ScanWarp detects crash</div>
+        <div class="event-desc">Vercel log drain catches the 500 error on /api/checkout. Stripe reports payment_intent.failed. ScanWarp correlates both — same root cause.</div>
+      </div>
+      <div class="timeline-event active">
+        <div class="event-time">MON 2:15 PM</div>
+        <div class="event-title">AI diagnoses the problem</div>
+        <div class="event-desc">"Your discount code handler throws an unhandled exception when the code doesn't exist in the database. The checkout page crashes for any invalid code."</div>
+      </div>
+      <div class="timeline-event">
+        <div class="event-time">MON 2:15 PM</div>
+        <div class="event-title">You get a Discord alert</div>
+        <div class="event-desc">Plain English. What's broken, why, and a fix prompt ready to paste.</div>
+      </div>
+      <div class="timeline-event">
+        <div class="event-time">MON 2:17 PM</div>
+        <div class="event-title">You open your editor</div>
+        <div class="event-desc">Your AI already knows. It read the diagnosis through MCP. You say "fix it."</div>
+      </div>
+      <div class="timeline-event success">
+        <div class="event-time">MON 2:19 PM</div>
+        <div class="event-title">Deployed. Confirmed working.</div>
+        <div class="event-desc">ScanWarp runs the check again. Green. Total downtime: 5 minutes.</div>
+      </div>
+    </div>
+
+    <div class="notif-card">
+      <div class="notif-header">
+        <div class="notif-avatar">SW</div>
+        <span class="notif-name">ScanWarp</span>
+        <span class="notif-time">2:15 PM</span>
+      </div>
+      <div class="notif-body">
+        <span class="red">⬥ CRITICAL</span> — checkout is down<br><br>
+        <span class="orange">What:</span> /api/checkout returning 500<br>
+        <span class="orange">Why:</span> Discount code query fails on invalid codes — no null check on the Supabase response<br>
+        <span class="orange">Impact:</span> 3 failed payments in the last 60 seconds<br>
+        <span class="orange">Correlated:</span> Stripe payment_intent.failed ×3<br><br>
+        <span class="green">Fix:</span> Add null check in /api/apply-discount before accessing row.discount_percent
+      </div>
+    </div>
+  </section>
+
+  <!-- FEATURES -->
+  <hr class="section-divider">
+  <section class="section fade-up" id="features">
+    <div class="section-label">What It Scans</div>
+    <h2>Every provider. Every signal. One feed.</h2>
+    <p>
+      ScanWarp connects to your entire stack and aggregates everything into one unified stream. No more checking five dashboards.
+    </p>
+    <div class="features-grid">
+      <div class="feature-card">
+        <span class="feature-icon" aria-hidden="true">◉</span>
+        <h3>External Monitoring</h3>
+        <p>Hits every page and API route every 60 seconds. Catches broken pages, slow loads, JS errors — everything a user would notice.</p>
+      </div>
+      <div class="feature-card">
+        <span class="feature-icon" aria-hidden="true">⇶</span>
+        <h3>Provider Alerts</h3>
+        <p>Ingests logs and webhooks from Vercel, Stripe, Supabase, Cloudflare, and more. Catches issues before they surface externally.</p>
+      </div>
+      <div class="feature-card">
+        <span class="feature-icon" aria-hidden="true">⊕</span>
+        <h3>Correlation Engine</h3>
+        <p>A Stripe failure and a Vercel 500 in the same minute? ScanWarp groups them as one incident with one root cause.</p>
+      </div>
+      <div class="feature-card">
+        <span class="feature-icon" aria-hidden="true">△</span>
+        <h3>AI Diagnosis</h3>
+        <p>Every incident gets a plain English explanation. What broke, why, and exactly how to fix it. No stack traces to read.</p>
+      </div>
+      <div class="feature-card">
+        <span class="feature-icon" aria-hidden="true">⬡</span>
+        <h3>MCP Integration</h3>
+        <p>Your AI coding tool reads ScanWarp through MCP. When you open Cursor or Claude Code, the AI already knows what's wrong.</p>
+      </div>
+      <div class="feature-card">
+        <span class="feature-icon" aria-hidden="true">☉</span>
+        <h3>Is It Me Or Them?</h3>
+        <p>Checks provider status pages automatically. When Vercel is having an outage, ScanWarp tells you it's not your code.</p>
+      </div>
+    </div>
+
+    <div class="section-label" style="margin-top: 3rem;">Connects To</div>
+    <div class="providers-bar">
+      <div class="provider-chip"><span class="status"></span> Vercel</div>
+      <div class="provider-chip"><span class="status"></span> Supabase</div>
+      <div class="provider-chip"><span class="status"></span> Stripe</div>
+      <div class="provider-chip"><span class="status"></span> Cloudflare</div>
+      <div class="provider-chip"><span class="status"></span> GitHub</div>
+      <div class="provider-chip"><span class="status"></span> Resend</div>
+      <div class="provider-chip"><span class="status"></span> Railway</div>
+      <div class="provider-chip"><span class="status"></span> AWS</div>
+    </div>
+  </section>
+
+  <!-- HONEST SCOPE -->
+  <hr class="section-divider">
+  <section class="section fade-up">
+    <div class="section-label">Honest Scope</div>
+    <h2>What ScanWarp is not.</h2>
+    <p>We'd rather you trust us than wonder later.</p>
+    <div class="honest-grid">
+      <div class="honest-card">
+        <div class="not-label">Not Analytics</div>
+        <div class="use-label">That's PostHog</div>
+        <p>ScanWarp tells you your app works. PostHog tells you what people do with it.</p>
+      </div>
+      <div class="honest-card">
+        <div class="not-label">Not Error Tracking</div>
+        <div class="use-label">That's Sentry</div>
+        <p>ScanWarp catches errors and explains them. Sentry gives you full stack traces and regression management.</p>
+      </div>
+      <div class="honest-card">
+        <div class="not-label">Not an APM</div>
+        <div class="use-label">That's Datadog</div>
+        <p>ScanWarp measures from the outside. Datadog instruments your code and traces requests through your backend.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- PRICING -->
+  <hr class="section-divider">
+  <section class="section fade-up" id="pricing">
+    <div class="section-label">Pricing</div>
+    <h2>Free to self-host. Forever.</h2>
+    <p>
+      The full monitoring engine is open source. The cloud version saves you from running infrastructure.
+    </p>
+    <div class="pricing-grid">
+      <div class="price-card">
+        <div class="price-name">Self-Hosted</div>
+        <div class="price-amount">$0</div>
+        <div class="price-period">forever · MIT license</div>
+        <ul class="price-features">
+          <li>Full monitoring engine</li>
+          <li>All provider integrations</li>
+          <li>AI diagnosis</li>
+          <li>MCP server</li>
+          <li>CLI & notifications</li>
+          <li>Docker Compose setup</li>
+        </ul>
+        <a href="https://github.com/scanwarp/scanwarp" class="btn-secondary" style="width:100%;text-align:center;">View on GitHub</a>
+      </div>
+      <div class="price-card featured">
+        <div class="price-name">Cloud</div>
+        <div class="price-amount">$0</div>
+        <div class="price-period">free under 10K page views/mo</div>
+        <ul class="price-features">
+          <li>Everything in self-hosted</li>
+          <li>No infrastructure to manage</li>
+          <li>Automatic updates</li>
+          <li>Hosted dashboard</li>
+          <li>Global status page</li>
+        </ul>
+        <a href="#get-started" class="btn-primary" style="width:100%;text-align:center;">Get Started Free</a>
+      </div>
+      <div class="price-card">
+        <div class="price-name">Pro</div>
+        <div class="price-amount">$19</div>
+        <div class="price-period">per month</div>
+        <ul class="price-features">
+          <li>Everything in Cloud</li>
+          <li>Multi-region monitoring</li>
+          <li>30-second check intervals</li>
+          <li>90-day history</li>
+          <li>Team access</li>
+          <li>Priority support</li>
+        </ul>
+        <a href="#get-started" class="btn-primary" style="width:100%;text-align:center;">Start Pro Trial</a>
+      </div>
+    </div>
+
+    <div class="oss-block">
+      <h3>Open Source. Not Open-Washing.</h3>
+      <p>
+        The full monitoring engine, AI diagnosis, MCP server, CLI, and dashboard — all MIT licensed. No feature gates on the free tier. Run it yourself with Docker Compose. Read every line of code.
+      </p>
+      <a href="https://github.com/scanwarp/scanwarp" class="btn-primary">Star on GitHub</a>
+    </div>
+  </section>
+
+  <!-- CTA -->
+  <hr class="section-divider">
+  <section class="cta-section fade-up" id="get-started">
+    <h2>Stop finding out<br>from your users.</h2>
+    <p>One command. Thirty seconds. Your whole stack, watched.</p>
+    <div class="cta-terminal" role="button" tabindex="0" aria-label="Copy install command: npx scanwarp init" onclick="navigator.clipboard.writeText('npx scanwarp init')" onkeydown="if(event.key==='Enter'||event.key===' '){this.click();event.preventDefault();}">
+      <span class="copy-hint">CLICK TO COPY</span>
+      <span class="prompt">$</span> npx scanwarp init
+    </div>
+    <br><br>
+    <div class="hero-ctas" style="justify-content:center;">
+      <a href="#" class="btn-primary">Start Scanning</a>
+      <a href="https://github.com/scanwarp/scanwarp" class="btn-secondary">View Source</a>
+    </div>
+  </section>
+
+  </main>
+
+  <!-- FOOTER -->
+  <footer aria-label="Site footer">
+    <div>
+      <div class="footer-brand">SCANWARP</div>
+      <div class="footer-copy">© 2026 ScanWarp. MIT License.</div>
+    </div>
+    <div class="footer-links">
+      <div class="footer-col">
+        <h4>Product</h4>
+        <a href="#features">Features</a>
+        <a href="#pricing">Pricing</a>
+        <a href="#">Docs</a>
+        <a href="#">Changelog</a>
+      </div>
+      <div class="footer-col">
+        <h4>Community</h4>
+        <a href="https://github.com/scanwarp/scanwarp">GitHub</a>
+        <a href="#">Discord</a>
+        <a href="#">Twitter</a>
+      </div>
+      <div class="footer-col">
+        <h4>Company</h4>
+        <a href="#">About</a>
+        <a href="#">Blog</a>
+        <a href="#">Privacy</a>
+        <a href="#">Terms</a>
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    // Nav scroll effect
+    window.addEventListener('scroll', () => {
+      document.querySelector('nav').classList.toggle('scrolled', window.scrollY > 50);
+    });
+
+    // Fade-in on scroll
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          entry.target.classList.add('visible');
+        }
+      });
+    }, { threshold: 0.1 });
+
+    document.querySelectorAll('.fade-up').forEach(el => observer.observe(el));
+
+    // Copy terminal command
+    document.querySelector('.cta-terminal').addEventListener('click', function() {
+      const hint = this.querySelector('.copy-hint');
+      const original = hint.textContent;
+      hint.textContent = 'COPIED!';
+      hint.style.color = '#5A9E4B';
+      setTimeout(() => {
+        hint.textContent = original;
+        hint.style.color = '';
+      }, 2000);
+    });
+  </script>
+
+</body>
+</html>
